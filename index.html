@@ -29,7 +29,6 @@ body {
     background-size: cover;
     filter: blur(35px) brightness(0.4);
     transform: scale(1.1);
-    transition: background-image 0.3s ease;
     z-index: -1;
 }
 
@@ -39,7 +38,7 @@ body {
     object-fit: contain;
     border-radius: 4px;
     box-shadow: 0 10px 50px #0008;
-    transition: opacity 0.2s ease;
+    transition: opacity 0.2s;
 }
 
 .arrow {
@@ -59,7 +58,6 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    user-select: none;
 }
 
 .arrow:hover {
@@ -75,12 +73,21 @@ body {
     right: 30px;
 }
 
-#counter {
+#info {
     position: fixed;
     bottom: 25px;
+    text-align: center;
     color: white;
-    font-size: 14px;
-    opacity: 0.65;
+}
+
+#name {
+    font-size: 16px;
+    margin-bottom: 6px;
+}
+
+#counter {
+    font-size: 12px;
+    opacity: 0.55;
     letter-spacing: 2px;
 }
 </style>
@@ -90,71 +97,98 @@ body {
 
 <div id="background"></div>
 
-<img id="artwork" src="/pictures/1.png" alt="Artwork">
+<img id="artwork" alt="Artwork">
 
 <button class="arrow" id="previous" onclick="changeImage(-1)">‹</button>
 <button class="arrow" id="next" onclick="changeImage(1)">›</button>
 
-<div id="counter">1</div>
+<div id="info">
+    <div id="name">Loading...</div>
+    <div id="counter"></div>
+</div>
 
 <script>
-let currentImage = 1;
-let totalImages = 0;
+let images = [];
+let currentIndex = 0;
 
 const artwork = document.getElementById("artwork");
 const background = document.getElementById("background");
+const nameDisplay = document.getElementById("name");
 const counter = document.getElementById("counter");
 
-function loadImage(number) {
-    const image = new Image();
-
-    image.onload = () => {
-        currentImage = number;
-        artwork.src = image.src;
-        background.style.backgroundImage = `url("${image.src}")`;
-        counter.textContent = `${currentImage} / ${totalImages || "..."}`;
-    };
-
-    image.onerror = () => {
-        if (number > currentImage) {
-            totalImages = currentImage;
-            counter.textContent = `${currentImage} / ${totalImages}`;
-        }
-    };
-
-    image.src = `/pictures/${number}.png`;
+function getDisplayName(filename) {
+    return filename
+        .replace(/\.png$/i, "")
+        .replace(/_/g, " ");
 }
 
-function changeImage(direction) {
-    const nextImage = currentImage + direction;
-
-    if (nextImage < 1) return;
+function showImage(index) {
+    if (index < 0 || index >= images.length) return;
 
     const image = new Image();
 
     image.onload = () => {
-        currentImage = nextImage;
+        currentIndex = index;
+
         artwork.style.opacity = 0;
 
         setTimeout(() => {
             artwork.src = image.src;
             background.style.backgroundImage = `url("${image.src}")`;
             artwork.style.opacity = 1;
-            counter.textContent = `${currentImage} / ${totalImages || "..."}`;
+
+            nameDisplay.textContent = getDisplayName(images[index]);
+            counter.textContent = `${index + 1} / ${images.length}`;
         }, 150);
     };
 
-    image.onerror = () => {};
+    image.onerror = () => {
+        nameDisplay.textContent = "Unable to load image";
+    };
 
-    image.src = `/pictures/${nextImage}.png`;
+    image.src = `/pictures/${encodeURIComponent(images[index])}`;
 }
 
-document.addEventListener("keydown", (event) => {
+function changeImage(direction) {
+    showImage(currentIndex + direction);
+}
+
+document.addEventListener("keydown", event => {
     if (event.key === "ArrowLeft") changeImage(-1);
     if (event.key === "ArrowRight") changeImage(1);
 });
 
-loadImage(1);
+async function initializeGallery() {
+    try {
+        const response = await fetch("/pictures/");
+        if (!response.ok) throw new Error("Directory unavailable");
+
+        const html = await response.text();
+        const documentParser = new DOMParser();
+        const page = documentParser.parseFromString(html, "text/html");
+
+        images = [...page.querySelectorAll("a")]
+            .map(link => decodeURIComponent(link.getAttribute("href") || ""))
+            .filter(name => /^[^/]+\.png$/i.test(name))
+            .sort((a, b) => a.localeCompare(b, undefined, {
+                sensitivity: "base",
+                numeric: true
+            }));
+
+        if (!images.length) {
+            nameDisplay.textContent = "No artwork found";
+            return;
+        }
+
+        showImage(0);
+
+    } catch (error) {
+        nameDisplay.textContent = "Could not retrieve images";
+        console.error(error);
+    }
+}
+
+initializeGallery();
 </script>
 
 </body>
