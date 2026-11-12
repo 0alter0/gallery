@@ -1,0 +1,161 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Art Gallery</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    height: 100vh;
+    overflow: hidden;
+    background: #111;
+    font-family: Arial, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#background {
+    position: fixed;
+    inset: -40px;
+    background-position: center;
+    background-size: cover;
+    filter: blur(35px) brightness(0.4);
+    transform: scale(1.1);
+    transition: background-image 0.3s ease;
+    z-index: -1;
+}
+
+#artwork {
+    max-width: 85vw;
+    max-height: 85vh;
+    object-fit: contain;
+    border-radius: 4px;
+    box-shadow: 0 10px 50px #0008;
+    transition: opacity 0.2s ease;
+}
+
+.arrow {
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 55px;
+    height: 55px;
+    border: none;
+    border-radius: 50%;
+    background: #ffffff18;
+    color: white;
+    font-size: 30px;
+    cursor: pointer;
+    backdrop-filter: blur(10px);
+    transition: background 0.2s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}
+
+.arrow:hover {
+    background: #ffffff35;
+    transform: translateY(-50%) scale(1.1);
+}
+
+#previous {
+    left: 30px;
+}
+
+#next {
+    right: 30px;
+}
+
+#counter {
+    position: fixed;
+    bottom: 25px;
+    color: white;
+    font-size: 14px;
+    opacity: 0.65;
+    letter-spacing: 2px;
+}
+</style>
+</head>
+
+<body>
+
+<div id="background"></div>
+
+<img id="artwork" src="/pictures/1.png" alt="Artwork">
+
+<button class="arrow" id="previous" onclick="changeImage(-1)">‹</button>
+<button class="arrow" id="next" onclick="changeImage(1)">›</button>
+
+<div id="counter">1</div>
+
+<script>
+let currentImage = 1;
+let totalImages = 0;
+
+const artwork = document.getElementById("artwork");
+const background = document.getElementById("background");
+const counter = document.getElementById("counter");
+
+function loadImage(number) {
+    const image = new Image();
+
+    image.onload = () => {
+        currentImage = number;
+        artwork.src = image.src;
+        background.style.backgroundImage = `url("${image.src}")`;
+        counter.textContent = `${currentImage} / ${totalImages || "..."}`;
+    };
+
+    image.onerror = () => {
+        if (number > currentImage) {
+            totalImages = currentImage;
+            counter.textContent = `${currentImage} / ${totalImages}`;
+        }
+    };
+
+    image.src = `/pictures/${number}.png`;
+}
+
+function changeImage(direction) {
+    const nextImage = currentImage + direction;
+
+    if (nextImage < 1) return;
+
+    const image = new Image();
+
+    image.onload = () => {
+        currentImage = nextImage;
+        artwork.style.opacity = 0;
+
+        setTimeout(() => {
+            artwork.src = image.src;
+            background.style.backgroundImage = `url("${image.src}")`;
+            artwork.style.opacity = 1;
+            counter.textContent = `${currentImage} / ${totalImages || "..."}`;
+        }, 150);
+    };
+
+    image.onerror = () => {};
+
+    image.src = `/pictures/${nextImage}.png`;
+}
+
+document.addEventListener("keydown", (event) => {
+    if (event.key === "ArrowLeft") changeImage(-1);
+    if (event.key === "ArrowRight") changeImage(1);
+});
+
+loadImage(1);
+</script>
+
+</body>
+</html>
